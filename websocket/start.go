@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/gorilla/websocket"
 	"log"
+	"strings"
 )
 
 func (manager *ClientManager) Start() {
@@ -61,7 +62,7 @@ func (manager *ClientManager) Start() {
 				}
 				msg, err := json.Marshal(replyMsg)
 				_ = broadcast.Client.Socket.WriteMessage(websocket.TextMessage, msg)
-				err = dao.InsertMsg(conf.MongoDBName, id, string(message), 1, int64(3*month)) //写入mongodb保存
+				err = dao.NewChatDAO().InsertMsg(conf.MongoDBName, id, string(message), 1, int64(3*month)) //写入mongodb保存
 				if err != nil {
 					fmt.Println("InsertOneMsg Err", err)
 				}
@@ -73,10 +74,66 @@ func (manager *ClientManager) Start() {
 				}
 				msg, err := json.Marshal(replyMsg)
 				_ = broadcast.Client.Socket.WriteMessage(websocket.TextMessage, msg)
-				err = dao.InsertMsg(conf.MongoDBName, id, string(message), 0, int64(3*month)) //0表示未读
+				err = dao.NewChatDAO().InsertMsg(conf.MongoDBName, id, string(message), 0, int64(3*month)) //0表示未读
 				if err != nil {
 					fmt.Println("InsertOneMsg Err", err)
 				}
+			}
+		case conn := <-GManager.GRegister: // 建立连接
+			log.Printf("%v加入群聊", conn.ID)
+			GManager.GClients[conn.ID] = conn
+			replyMsg := &ReplyMsg{
+				Code:    e.WebsocketSuccess,
+				Content: "已连接至服务器",
+			}
+			msg, _ := json.Marshal(replyMsg)
+			_ = conn.Socket.WriteMessage(websocket.TextMessage, msg)
+		case conn := <-GManager.GUnregister: // 断开连接
+			log.Printf("%v断开连接", conn.ID)
+			if _, ok := GManager.GClients[conn.ID]; ok {
+				replyMsg := &ReplyMsg{
+					Code:    e.WebsocketEnd,
+					Content: "连接已断开",
+				}
+				msg, _ := json.Marshal(replyMsg)
+				_ = conn.Socket.WriteMessage(websocket.TextMessage, msg)
+				close(conn.Send)
+				delete(GManager.GClients, conn.ID)
+			}
+		case broadcast := <-GManager.GBroadcast:
+			message := broadcast.Message
+			id := broadcast.GroupClient.ID
+			groupID := broadcast.GroupClient.GroupID
+			member, err := dao.NewChatDAO().GetMemberByGroupID(groupID)
+			if err != nil {
+				fmt.Println("InsertOneMsg Err", err)
+			}
+			strSlice := strings.Split(member, ",")
+			for _, v := range strSlice {
+				if v != id {
+					for _, conn := range GManager.GClients {
+						if conn.ID != v || conn.GroupID != groupID {
+							continue
+						}
+						select {
+						case conn.Send <- message:
+						default:
+							close(conn.Send)
+							delete(Manager.Clients, conn.ID)
+						}
+					}
+				}
+			}
+			//
+			replyMsg := &ReplyMsg{
+				Code:    e.WebsocketOnlineReply,
+				Content: "已发送至群组",
+			}
+			msg, err := json.Marshal(replyMsg)
+			_ = broadcast.GroupClient.Socket.WriteMessage(websocket.TextMessage, msg)
+			err = dao.NewChatDAO().InsertMsg(conf.MongoDBName, id, string(message), 1, int64(3*month)) //写入mongodb保存
+			if err != nil {
+				fmt.Println("InsertOneMsg Err", err)
 			}
 		}
 	}
