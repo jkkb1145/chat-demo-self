@@ -36,8 +36,19 @@ func (c *ChatDAO) InsertMsg(database string, id string, content string, read uin
 	_, err = collection.InsertOne(context.TODO(), comment)
 	return
 }
+
+func (c *ChatDAO) CreateNewGroup(member, groupID string) error {
+	query := "INSERT INTO chat_group(member,id) VALUE (?,?)"
+	_, err := global.Db.Exec(query, member, groupID)
+	if err != nil {
+		fmt.Printf("Error Occurred When Database INSERT INTO. \n %v", err)
+		return err
+	}
+	return nil
+}
+
 func (c *ChatDAO) GetMemberByGroupID(groupID string) (string, error) {
-	sqlStr := "SELECT member FROM group WHERE id = ?"
+	sqlStr := "SELECT member FROM chat_group WHERE id = ?"
 
 	var resultStr string
 

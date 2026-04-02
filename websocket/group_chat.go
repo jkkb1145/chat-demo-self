@@ -56,6 +56,7 @@ func GroupHanlder(c *gin.Context) {
 	}
 	GManager.GRegister <- client
 	go client.GRead(c)
+	go client.GWrite(c)
 }
 
 func (g *GroupClient) GRead(ctx *gin.Context) {
@@ -73,7 +74,7 @@ func (g *GroupClient) GRead(ctx *gin.Context) {
 			break
 		}
 		if sendMsg.Type == 2 {
-			log.Println(g.ID, "发送消息", sendMsg.Content, "到群组", g.GroupID)
+			log.Println(g.ID, "发送消息:", sendMsg.Content, ".到群组", g.GroupID)
 			GManager.GBroadcast <- &GroupBroadcast{
 				GroupClient: g,
 				Message:     []byte(sendMsg.Content),
@@ -81,7 +82,7 @@ func (g *GroupClient) GRead(ctx *gin.Context) {
 		}
 	}
 }
-func (g *GroupClient) GWrite() {
+func (g *GroupClient) GWrite(ctx *gin.Context) {
 	defer func() {
 		_ = g.Socket.Close()
 	}()

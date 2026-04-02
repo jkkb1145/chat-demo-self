@@ -70,7 +70,7 @@ func createId(uid, toUid string) string {
 	return uid + "->" + toUid
 }
 
-func WsHandler(c *gin.Context) {
+func PrivateHandler(c *gin.Context) {
 	uid := c.Query("uid")     // 自己的id  1
 	toUid := c.Query("toUid") // 对方的id  2
 	conn, err := (&websocket.Upgrader{

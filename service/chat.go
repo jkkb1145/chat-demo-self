@@ -11,3 +11,7 @@ func NewChatService() *ChatService {
 		ChatDAO: dao.NewChatDAO(),
 	}
 }
+
+func (c *ChatService) CreateNewGroup(member, groupID string) error {
+	return c.ChatDAO.CreateNewGroup(member, groupID)
+}

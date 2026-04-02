@@ -17,9 +17,13 @@ func InitRouter() *gin.Engine {
 	}
 	user := v1.Group("/user")
 	{
-		ctl := controller.NewUserController()
-		user.POST("/register", ctl.UserRegister)
-		user.GET("/ws", ws.WsHandler)
+		user.POST("/user_register", controller.NewUserController().UserRegister)
+		user.POST("/create_group", controller.NewChatController().CreateNewGroup)
+	}
+	chat := v1.Group("/chat")
+	{
+		chat.GET("/private_chat", ws.PrivateHandler)
+		chat.GET("/group_chat", ws.GroupHanlder)
 	}
 	return r
 }

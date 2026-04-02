@@ -15,6 +15,7 @@ func (manager *ClientManager) Start() {
 	for {
 		log.Println("<---监听管道通信--->") //定义管道时没有分配缓存区,select可以让准备好了的管道执行
 		select {
+		//监听单聊管道
 		case conn := <-Manager.Register: // 建立连接
 			log.Printf("建立新连接: %v", conn.ID)
 			Manager.Clients[conn.ID] = conn //将新的连接存入存放Client的map中
@@ -36,7 +37,7 @@ func (manager *ClientManager) Start() {
 				close(conn.Send)
 				delete(Manager.Clients, conn.ID)
 			}
-		//广播信息
+			//广播信息
 		case broadcast := <-Manager.Broadcast:
 			message := broadcast.Message
 			sendId := broadcast.Client.SendID
@@ -79,6 +80,7 @@ func (manager *ClientManager) Start() {
 					fmt.Println("InsertOneMsg Err", err)
 				}
 			}
+		//监听群聊管道
 		case conn := <-GManager.GRegister: // 建立连接
 			log.Printf("%v加入群聊", conn.ID)
 			GManager.GClients[conn.ID] = conn
@@ -90,7 +92,8 @@ func (manager *ClientManager) Start() {
 			_ = conn.Socket.WriteMessage(websocket.TextMessage, msg)
 		case conn := <-GManager.GUnregister: // 断开连接
 			log.Printf("%v断开连接", conn.ID)
-			if _, ok := GManager.GClients[conn.ID]; ok {
+			key := createId(conn.ID, conn.GroupID)
+			if _, ok := GManager.GClients[key]; ok {
 				replyMsg := &ReplyMsg{
 					Code:    e.WebsocketEnd,
 					Content: "连接已断开",
@@ -106,9 +109,9 @@ func (manager *ClientManager) Start() {
 			groupID := broadcast.GroupClient.GroupID
 			member, err := dao.NewChatDAO().GetMemberByGroupID(groupID)
 			if err != nil {
-				fmt.Println("InsertOneMsg Err", err)
+				fmt.Println("Get Member Err", err)
 			}
-			strSlice := strings.Split(member, ",")
+			strSlice := strings.Split(member, ",") //切分字符串提取成员
 			for _, v := range strSlice {
 				if v != id {
 					for _, conn := range GManager.GClients {
