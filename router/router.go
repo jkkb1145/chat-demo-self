@@ -22,8 +22,8 @@ func InitRouter() *gin.Engine {
 	}
 	chat := v1.Group("/chat")
 	{
-		chat.GET("/private_chat", ws.PrivateHandler)
-		chat.GET("/group_chat", ws.GroupHanlder)
+		chat.GET("/private_chat", ws.PrivateHandler) //私聊
+		chat.GET("/group_chat", ws.GroupHanlder)     //群聊
 	}
 	return r
 }

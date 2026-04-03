@@ -11,8 +11,8 @@ import (
 )
 
 type GroupClient struct {
-	ID      string
-	GroupID string
+	ID      string //发送方ID
+	GroupID string //群聊ID
 	Socket  *websocket.Conn
 	Send    chan []byte
 }
@@ -73,7 +73,7 @@ func (g *GroupClient) GRead(ctx *gin.Context) {
 			_ = g.Socket.Close()
 			break
 		}
-		if sendMsg.Type == 2 {
+		if sendMsg.Type == 1 {
 			log.Println(g.ID, "发送消息:", sendMsg.Content, ".到群组", g.GroupID)
 			GManager.GBroadcast <- &GroupBroadcast{
 				GroupClient: g,

@@ -16,7 +16,8 @@ func (manager *ClientManager) Start() {
 		log.Println("<---监听管道通信--->") //定义管道时没有分配缓存区,select可以让准备好了的管道执行
 		select {
 		//监听单聊管道
-		case conn := <-Manager.Register: // 建立连接
+		//新连接加入
+		case conn := <-Manager.Register:
 			log.Printf("建立新连接: %v", conn.ID)
 			Manager.Clients[conn.ID] = conn //将新的连接存入存放Client的map中
 			replyMsg := &ReplyMsg{
@@ -25,7 +26,8 @@ func (manager *ClientManager) Start() {
 			}
 			msg, _ := json.Marshal(replyMsg)
 			_ = conn.Socket.WriteMessage(websocket.TextMessage, msg)
-		case conn := <-Manager.Unregister: // 断开连接
+		//移除连接
+		case conn := <-Manager.Unregister:
 			log.Printf("连接失败:%v", conn.ID)
 			if _, ok := Manager.Clients[conn.ID]; ok {
 				replyMsg := &ReplyMsg{
@@ -37,19 +39,19 @@ func (manager *ClientManager) Start() {
 				close(conn.Send)
 				delete(Manager.Clients, conn.ID)
 			}
-			//广播信息
+		//广播管道激活, 服务端向接收方发送信息
 		case broadcast := <-Manager.Broadcast:
 			message := broadcast.Message
 			sendId := broadcast.Client.SendID
-			flag := false                           // 默认对方不在线
+			flag := false                           // 接收方在线状况, 默认对方不在线
 			for id, conn := range Manager.Clients { //在用户管理结构体的所有Client连接中找是否有反向连接,有则表示双方连接在线
 				if id != sendId {
 					continue
 				}
 				select {
-				case conn.Send <- message:
+				case conn.Send <- message: //此时的conn是接收方的ws连接, 激活了write函数中监听的Send管道, 将会把信息返回给接收方
 					flag = true
-				default:
+				default: //Send管道被占用, 一般是发送消息过多服务端无法应对, 强制关闭
 					close(conn.Send)
 					delete(Manager.Clients, conn.ID)
 				}
@@ -63,9 +65,9 @@ func (manager *ClientManager) Start() {
 				}
 				msg, err := json.Marshal(replyMsg)
 				_ = broadcast.Client.Socket.WriteMessage(websocket.TextMessage, msg)
-				err = dao.NewChatDAO().InsertMsg(conf.MongoDBName, id, string(message), 1, int64(3*month)) //写入mongodb保存
+				err = dao.NewChatDAO().InsertMsg(conf.MongoDBName, id, string(message), 1, int64(3*month)) //写入mongodb保存聊天记录
 				if err != nil {
-					fmt.Println("InsertOneMsg Err", err)
+					fmt.Println("写入MongoDB时错误: ", err)
 				}
 			} else {
 				log.Println("对方不在线")
@@ -77,7 +79,7 @@ func (manager *ClientManager) Start() {
 				_ = broadcast.Client.Socket.WriteMessage(websocket.TextMessage, msg)
 				err = dao.NewChatDAO().InsertMsg(conf.MongoDBName, id, string(message), 0, int64(3*month)) //0表示未读
 				if err != nil {
-					fmt.Println("InsertOneMsg Err", err)
+					fmt.Println("写入MongoDB时错误: ", err)
 				}
 			}
 		//监听群聊管道
@@ -103,23 +105,23 @@ func (manager *ClientManager) Start() {
 				close(conn.Send)
 				delete(GManager.GClients, conn.ID)
 			}
-		case broadcast := <-GManager.GBroadcast:
-			message := broadcast.Message
-			id := broadcast.GroupClient.ID
-			groupID := broadcast.GroupClient.GroupID
+		case gbroadcast := <-GManager.GBroadcast:
+			message := gbroadcast.Message
+			id := gbroadcast.GroupClient.ID
+			groupID := gbroadcast.GroupClient.GroupID
 			member, err := dao.NewChatDAO().GetMemberByGroupID(groupID)
 			if err != nil {
-				fmt.Println("Get Member Err", err)
+				fmt.Println("获取群聊成员错误: ", err)
 			}
 			strSlice := strings.Split(member, ",") //切分字符串提取成员
-			for _, v := range strSlice {
-				if v != id {
-					for _, conn := range GManager.GClients {
+			for _, v := range strSlice {           //遍历群聊成员
+				if v != id { //排除发送方自己
+					for _, conn := range GManager.GClients { //向已经连接到服务端的群组成员转发消息
 						if conn.ID != v || conn.GroupID != groupID {
 							continue
 						}
 						select {
-						case conn.Send <- message:
+						case conn.Send <- message: //循环激活Send管道, 向群聊其他成员转发消息
 						default:
 							close(conn.Send)
 							delete(Manager.Clients, conn.ID)
@@ -133,10 +135,10 @@ func (manager *ClientManager) Start() {
 				Content: "已发送至群组",
 			}
 			msg, err := json.Marshal(replyMsg)
-			_ = broadcast.GroupClient.Socket.WriteMessage(websocket.TextMessage, msg)
-			err = dao.NewChatDAO().InsertMsg(conf.MongoDBName, id, string(message), 1, int64(3*month)) //写入mongodb保存
+			_ = gbroadcast.GroupClient.Socket.WriteMessage(websocket.TextMessage, msg)
+			err = dao.NewChatDAO().InsertMsg(conf.MongoDBName, groupID, string(message), 1, int64(3*month))
 			if err != nil {
-				fmt.Println("InsertOneMsg Err", err)
+				fmt.Println("写入MongoDB时错误: ", err)
 			}
 		}
 	}

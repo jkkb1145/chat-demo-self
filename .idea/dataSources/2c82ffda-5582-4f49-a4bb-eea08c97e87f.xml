@@ -750,7 +750,7 @@ sys|schema||mysql.sys|localhost|TRIGGER|G</Grants>
       <CollationName>utf8_general_ci</CollationName>
     </schema>
     <schema id="225" parent="1" name="chat_demo_self">
-      <LastIntrospectionLocalTimestamp>2026-04-02.14:07:40</LastIntrospectionLocalTimestamp>
+      <LastIntrospectionLocalTimestamp>2026-04-03.05:45:59</LastIntrospectionLocalTimestamp>
       <CollationName>utf8_unicode_ci</CollationName>
     </schema>
     <schema id="226" parent="1" name="mysql">
@@ -775,21 +775,49 @@ sys|schema||mysql.sys|localhost|TRIGGER|G</Grants>
       <Engine>MyISAM</Engine>
       <CollationName>utf8_unicode_ci</CollationName>
     </table>
-    <column id="233" parent="232" name="member">
+    <table id="233" parent="225" name="user">
+      <Engine>MyISAM</Engine>
+      <CollationName>utf8_unicode_ci</CollationName>
+    </table>
+    <column id="234" parent="232" name="member">
       <DasType>varchar(50)|0s</DasType>
       <Position>1</Position>
     </column>
-    <column id="234" parent="232" name="id">
+    <column id="235" parent="232" name="id">
       <DasType>varchar(50)|0s</DasType>
       <NotNull>1</NotNull>
       <Position>2</Position>
     </column>
-    <index id="235" parent="232" name="PRIMARY">
+    <index id="236" parent="232" name="PRIMARY">
       <ColNames>id</ColNames>
       <Type>btree</Type>
       <Unique>1</Unique>
     </index>
-    <key id="236" parent="232" name="PRIMARY">
+    <key id="237" parent="232" name="PRIMARY">
+      <NameSurrogate>1</NameSurrogate>
+      <Primary>1</Primary>
+      <UnderlyingIndexName>PRIMARY</UnderlyingIndexName>
+    </key>
+    <column id="238" parent="233" name="UserName">
+      <DasType>varchar(50)|0s</DasType>
+      <Position>1</Position>
+    </column>
+    <column id="239" parent="233" name="Password">
+      <DasType>varchar(50)|0s</DasType>
+      <Position>2</Position>
+    </column>
+    <column id="240" parent="233" name="UserID">
+      <AutoIncrement>1</AutoIncrement>
+      <DasType>int(11)|0s</DasType>
+      <NotNull>1</NotNull>
+      <Position>3</Position>
+    </column>
+    <index id="241" parent="233" name="PRIMARY">
+      <ColNames>UserID</ColNames>
+      <Type>btree</Type>
+      <Unique>1</Unique>
+    </index>
+    <key id="242" parent="233" name="PRIMARY">
       <NameSurrogate>1</NameSurrogate>
       <Primary>1</Primary>
       <UnderlyingIndexName>PRIMARY</UnderlyingIndexName>

@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"go.mongodb.org/mongo-driver/bson"
 	"time"
 )
 
@@ -35,6 +36,20 @@ func (c *ChatDAO) InsertMsg(database string, id string, content string, read uin
 	}
 	_, err = collection.InsertOne(context.TODO(), comment)
 	return
+}
+
+func (c *ChatDAO) GetMsg(database string, id string) (*[]model.Trainer, error) {
+	collection := global.MongoDBClient.Database(database).Collection(id)
+	cursor, err := collection.Find(context.TODO(), bson.D{})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(context.TODO())
+	var allMsg []model.Trainer
+	if err := cursor.All(context.TODO(), &allMsg); err != nil {
+		return nil, err
+	}
+	return &allMsg, nil
 }
 
 func (c *ChatDAO) CreateNewGroup(member, groupID string) error {
